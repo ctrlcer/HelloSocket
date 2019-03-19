@@ -106,7 +106,7 @@ int main() {
 				recv(_cSock, (char *)&logout, sizeof(Login), 0);
 				LoginoutResult ret = { 1 };
 				send(_cSock, (char *)&header, sizeof(DataHeader), 0);
-				send(_cSock, (char *)&ret, sizeof(LoginResult), 0);
+				send(_cSock, (char *)&ret, sizeof(LoginoutResult), 0);
 
 			}
 			break;
