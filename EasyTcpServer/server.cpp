@@ -3,7 +3,7 @@
 //避免冲突
 #include<Windows.h>
 #include<WinSock2.h>
-#include<stdio.h>
+#include<cstdio>
 #include<iostream>
 #pragma comment(lib,"ws2_32.lib")
 //消息头
@@ -18,7 +18,6 @@ struct DataHeader
 {
 	short dataLength;//数据长度
 	short cmd;
-
 };
 //字节序
 //内存对齐
@@ -104,42 +103,41 @@ int main() {
 	printf("新客户端加入: SOCK = %d,IP = %s \n",_cSock,inet_ntoa(clientAddr.sin_addr));
 
 	while (true) {
-		DataHeader  header = {};
-		char _recvBuf[128] = {};
+		//缓冲区
+		char szRecv[1024] = {};
 		//5.接收客户端数据
-		int nrecv = recv(_cSock, (char *)&header, sizeof(header), 0);
-		if (nrecv <= 0) {
+		int nLen = recv(_cSock,szRecv, sizeof(DataHeader), 0);
+		DataHeader* header = (DataHeader*)szRecv;
+		 
+		if (nLen <= 0) {
 			printf("客户端已退出,任务结束\n");
 			break;
 		}
-		switch (header.cmd)
+		switch (header->cmd)
 		{	
 			case CMD_LOGIN:
 			{
-				
-				Login login = {};
-				recv(_cSock, (char *)&login+sizeof(DataHeader), sizeof(Login)-sizeof(DataHeader), 0);//偏移
-				printf("收到命令: CMD_LOGIN %d 数据长度: %d,userName=%s PassWord=%s\n",login.cmd,login.dataLength,login.userName,login.PassWord);
+				recv(_cSock, szRecv+sizeof(DataHeader), header->dataLength-sizeof(DataHeader), 0);//偏移
+				Login* login = (Login*)szRecv;
+				printf("收到命令: CMD_LOGIN %d 数据长度: %d,userName=%s PassWord=%s\n",login->cmd,login->dataLength,login->userName,login->PassWord);
 				//忽略判断用户名密码是否正确
 				LoginResult ret;
 				send(_cSock, (char *)&ret, sizeof(LoginResult), 0);
 			}
 			break;
 			case CMD_LOGINOUT: 
-			{
-				LoginOut logout = {};
-				recv(_cSock, (char *)&logout + sizeof(DataHeader), sizeof(logout) - sizeof(DataHeader), 0);//偏移
-				printf("收到命令: CMD_LOGOUT %d 数据长度: %d,userName=%s", logout.cmd, logout.dataLength, logout.userName);
+			{				
+				recv(_cSock, szRecv + sizeof(DataHeader), header->dataLength - sizeof(DataHeader), 0);//偏移
+				LoginOut* logout = (LoginOut*)szRecv;
+				printf("收到命令: CMD_LOGOUT %d 数据长度: %d,userName=%s\n", logout->cmd, logout->dataLength, logout->userName);
 				LoginoutResult ret;
 				send(_cSock, (char *)&ret, sizeof(ret), 0);
 			}
 			break;
 			default:
-				header.cmd = CMD_ERROR;
-				header.dataLength = 0;
+				DataHeader header = { 0,CMD_ERROR };
 				send(_cSock, (char*)&header, sizeof(header), 0);
-				break;
-		}
+			}
 		//6.处理请求
 	}
 	//6.关闭套接字
