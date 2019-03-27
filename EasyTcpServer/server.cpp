@@ -120,7 +120,7 @@ int main() {
 		printf("绑定成功\n");
 	}
 	//3.监听网络端口
-	if (SOCKET_ERROR ==listen(_sock, 5)) {
+	if (SOCKET_ERROR == listen(_sock, 5)) {
 		printf("监听失败\n");
 	}
 	else {
@@ -131,20 +131,20 @@ int main() {
 		fd_set fdRead;
 		fd_set fdWrite;
 		fd_set fdExp;
-		
+
 		FD_ZERO(&fdRead);
 		FD_ZERO(&fdWrite);
 		FD_ZERO(&fdExp);
 		FD_SET(_sock, &fdRead);
 		FD_SET(_sock, &fdWrite);
 		FD_SET(_sock, &fdExp);
-		for (int n = (int)g_Client.size()-1; n >= 0; n--) {
+		for (int n = (int)g_Client.size() - 1; n >= 0; n--) {
 			FD_SET(g_Client[n], &fdRead);
 		}
-		timeval t = { 0, 0};
+		timeval t = { 0, 0 };
 		//是一个整数值  是指fd_set集合中所有描述符(socket)的范围 而不是数量
 		//这是所有文件描述符最大值-1,在Windows中这个参数写0
-		int ret = select(_sock+1, &fdRead,&fdWrite,&fdExp, &t);
+		int ret = select(_sock + 1, &fdRead, &fdWrite, &fdExp, &t);
 		if (ret < 0) {
 			printf("select,任务结束\n");
 			break;
@@ -170,7 +170,7 @@ int main() {
 				}
 			}
 		}
-		
+
 		//6.处理请求
 	}
 	for (size_t n = g_Client.size() - 1; n >= 0; n--) {
