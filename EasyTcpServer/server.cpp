@@ -13,6 +13,7 @@ enum CMD {
 	CMD_LOGIN_RESULT,
 	CMD_LOGINOUT,
 	CMD_LOGOUT_RESULT,
+	CMD_NEW_USER_JOIN,
 	CMD_ERROR
 };
 struct DataHeader
@@ -42,6 +43,16 @@ struct LoginResult:public DataHeader
 	}
 	int result;
 };
+struct NewUserJoin :public DataHeader
+{
+	NewUserJoin() {
+		dataLength = sizeof(NewUserJoin);
+		cmd = CMD_NEW_USER_JOIN;
+		sock = 0;
+	}
+	int sock;
+};
+
 struct LoginOut:public DataHeader
 {
 	LoginOut() {
@@ -64,12 +75,12 @@ vector<SOCKET> g_Client;
 
 int processor(SOCKET _cSock) {
 	//缓冲区
-	char szRecv[1024] = {};
+	char szRecv[1024] = {}; 
 	//5.接收客户端数据
 	int nLen = recv(_cSock, szRecv, sizeof(DataHeader), 0);
 	DataHeader* header = (DataHeader*)szRecv;
 	if (nLen <= 0) {
-		printf("客户端已退出,任务结束\n");
+		printf("客户端<Socket=%d>已退出,任务结束\n",_cSock);
 		return -1;
 	}
 	switch (header->cmd)
@@ -78,7 +89,7 @@ int processor(SOCKET _cSock) {
 	{
 		recv(_cSock, szRecv + sizeof(DataHeader), header->dataLength - sizeof(DataHeader), 0);//偏移
 		Login* login = (Login*)szRecv;
-		printf("收到命令: CMD_LOGIN %d 数据长度: %d,userName=%s PassWord=%s\n", login->cmd, login->dataLength, login->userName, login->PassWord);
+		printf("收到客户端<Socket=%d>请求: CMD_LOGIN %d 数据长度: %d,userName=%s PassWord=%s\n",_cSock,login->cmd, login->dataLength, login->userName, login->PassWord);
 		//忽略判断用户名密码是否正确
 		LoginResult ret;
 		send(_cSock, (char *)&ret, sizeof(LoginResult), 0);
@@ -88,7 +99,7 @@ int processor(SOCKET _cSock) {
 	{
 		recv(_cSock, szRecv + sizeof(DataHeader), header->dataLength - sizeof(DataHeader), 0);//偏移
 		LoginOut* logout = (LoginOut*)szRecv;
-		printf("收到命令: CMD_LOGOUT %d 数据长度: %d,userName=%s\n", logout->cmd, logout->dataLength, logout->userName);
+		printf("收到客户端<Socket=%d>请求: CMD_LOGOUT %d 数据长度: %d,userName=%s\n",_cSock, logout->cmd, logout->dataLength, logout->userName);
 		LoginoutResult ret;
 		send(_cSock, (char *)&ret, sizeof(ret), 0);
 	}
@@ -144,7 +155,7 @@ int main() {
 		timeval t = { 0, 0 };
 		//是一个整数值  是指fd_set集合中所有描述符(socket)的范围 而不是数量
 		//这是所有文件描述符最大值-1,在Windows中这个参数写0
-		int ret = select(_sock + 1, &fdRead, &fdWrite, &fdExp, &t);
+		int ret = select(_sock + 1, &fdRead, &fdWrite, &fdExp,&t);
 		if (ret < 0) {
 			printf("select,任务结束\n");
 			break;
@@ -159,6 +170,10 @@ int main() {
 			if (INVALID_SOCKET == _cSock) {
 				printf("错误，接受到无效客户端socket...\n");
 			}
+			for (int n = (int)g_Client.size() - 1; n >= 0; n--) {
+				NewUserJoin userJoin;
+				send(g_Client[n],(const char*)&userJoin, sizeof(NewUserJoin),0);
+			}
 			g_Client.push_back(_cSock);
 			printf("新客户端加入: SOCK = %d,IP = %s \n", (int)_cSock, inet_ntoa(clientAddr.sin_addr));
 		}
@@ -171,6 +186,7 @@ int main() {
 			}
 		}
 
+		printf("空闲时间处理其他业务\n");
 		//6.处理请求
 	}
 	for (size_t n = g_Client.size() - 1; n >= 0; n--) {
